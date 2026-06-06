@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ROS2 Analyzer</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
+  <script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+</head>
+<body>
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <div id="sidebar-header">
+      <div id="sidebar-title-row">
+        <h1>ROS2 Analyzer</h1>
+        <button id="open-file-btn" title="Open ROS2 snapshot file">Open</button>
+        <button id="settings-export" title="Export settings to file">Export</button>
+        <button id="settings-import" title="Import settings from file">Import</button>
+        <input type="file" id="settings-file-input" accept=".json" style="display:none">
+        <button id="theme-toggle" title="Toggle light/dark theme">☾</button>
+      </div>
+      <div id="collected-at"></div>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab active" data-type="nodes">Nodes</button>
+      <button class="tab" data-type="topics">Topics</button>
+      <button class="tab" data-type="services">Services</button>
+      <button class="tab" data-type="actions">Actions</button>
+    </div>
+
+    <div id="search-wrap">
+      <input id="search" type="text" placeholder="Search..." autocomplete="off" spellcheck="false">
+      <span id="search-count"></span>
+    </div>
+
+    <div id="vis-controls">
+      <button id="vis-show-all" title="Show all in graph">Show all</button>
+      <button id="vis-hide-all" title="Hide all from graph">Hide all</button>
+    </div>
+
+    <ul id="entity-list"></ul>
+  </aside>
+
+  <div class="resize-handle-v" id="sidebar-resize"></div>
+
+  <!-- Main area -->
+  <main id="main">
+    <!-- Details panel -->
+    <section id="details-panel">
+      <div id="details-empty">
+        <p>Select a node, topic, service, or action from the list to see details and graph.</p>
+      </div>
+      <div id="details-content" style="display:none">
+        <div id="details-header">
+          <span id="details-type-badge"></span>
+          <h2 id="details-name"></h2>
+        </div>
+        <div id="details-body"></div>
+      </div>
+    </section>
+
+    <div class="resize-handle-h" id="details-resize"></div>
+
+    <!-- Graph controls -->
+    <div id="graph-controls">
+      <div id="graph-controls-left">
+        <label for="depth-slider">
+          Graph depth: <strong id="depth-value">1</strong>
+        </label>
+        <input type="range" id="depth-slider" min="1" max="6" value="1" step="1">
+        <button id="color-mode-toggle" title="Switch coloring mode">NS Colors</button>
+      </div>
+      <div id="graph-legend">
+        <span class="legend-item node-legend"    data-type="node"    title="Click to hide/show nodes">Node</span>
+        <span class="legend-item topic-legend"   data-type="topic"   title="Click to hide/show topics">Topic</span>
+        <span class="legend-item service-legend" data-type="service" title="Click to hide/show services">Service</span>
+        <span class="legend-item action-legend"  data-type="action"  title="Click to hide/show actions">Action</span>
+      </div>
+    </div>
+
+    <!-- Namespace color rules panel -->
+    <div id="ns-rules-panel" class="hidden">
+      <div id="ns-rules-header">
+        <span>Color by namespace substring — first match wins</span>
+        <button id="ns-add-rule">+ Add rule</button>
+      </div>
+      <div id="ns-rules-list"></div>
+    </div>
+
+    <!-- Cytoscape canvas -->
+    <div id="cy"></div>
+
+    <!-- Right-click context menu -->
+    <div id="cy-ctx-menu" class="hidden">
+      <div id="ctx-toggle-vis"></div>
+      <div id="ctx-select-entity">Select in sidebar</div>
+    </div>
+
+    <!-- File picker / loading / error overlay -->
+    <div id="overlay">
+      <div id="file-picker">
+        <div class="file-picker-icon">📂</div>
+        <p class="file-picker-title">Open ROS2 snapshot</p>
+        <label for="data-file-input" class="file-pick-btn">Choose file…</label>
+        <input type="file" id="data-file-input" accept=".json" style="display:none">
+        <p class="file-picker-hint">or drag &amp; drop a .json file onto this area</p>
+      </div>
+      <div id="overlay-message" style="display:none"></div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

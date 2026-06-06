@@ -1,0 +1,353 @@
+{
+  "collected_at": "2026-06-05T10:00:00.000000+00:00",
+  "nodes": [
+    {
+      "name": "/sensor_node",
+      "publishers": [
+        {"topic": "/sensor/imu",    "type": "sensor_msgs/msg/Imu"},
+        {"topic": "/sensor/lidar",  "type": "sensor_msgs/msg/LaserScan"},
+        {"topic": "/sensor/camera", "type": "sensor_msgs/msg/Image"},
+        {"topic": "/sensor/gps",    "type": "sensor_msgs/msg/NavSatFix"}
+      ],
+      "subscribers": [],
+      "service_servers": [],
+      "service_clients": [],
+      "action_servers": [],
+      "action_clients": []
+    },
+    {
+      "name": "/perception_node",
+      "publishers": [
+        {"topic": "/perception/objects",    "type": "vision_msgs/msg/Detection3DArray"},
+        {"topic": "/perception/map",        "type": "nav_msgs/msg/OccupancyGrid"},
+        {"topic": "/perception/ego_pose",   "type": "geometry_msgs/msg/PoseWithCovarianceStamped"},
+        {"topic": "/perception/trajectory", "type": "nav_msgs/msg/Path"}
+      ],
+      "subscribers": [
+        {"topic": "/sensor/imu",    "type": "sensor_msgs/msg/Imu"},
+        {"topic": "/sensor/lidar",  "type": "sensor_msgs/msg/LaserScan"},
+        {"topic": "/sensor/camera", "type": "sensor_msgs/msg/Image"},
+        {"topic": "/sensor/gps",    "type": "sensor_msgs/msg/NavSatFix"}
+      ],
+      "service_servers": [],
+      "service_clients": [],
+      "action_servers": [],
+      "action_clients": []
+    },
+    {
+      "name": "/control_node",
+      "publishers": [
+        {"topic": "/control/cmd_vel", "type": "geometry_msgs/msg/Twist"},
+        {"topic": "/control/status",  "type": "std_msgs/msg/String"}
+      ],
+      "subscribers": [
+        {"topic": "/perception/objects",    "type": "vision_msgs/msg/Detection3DArray"},
+        {"topic": "/perception/map",        "type": "nav_msgs/msg/OccupancyGrid"},
+        {"topic": "/perception/ego_pose",   "type": "geometry_msgs/msg/PoseWithCovarianceStamped"},
+        {"topic": "/perception/trajectory", "type": "nav_msgs/msg/Path"}
+      ],
+      "service_servers": [],
+      "service_clients": [],
+      "action_servers": [],
+      "action_clients": []
+    }
+  ],
+  "topics": [
+    {
+      "name": "/sensor/imu",
+      "types": ["sensor_msgs/msg/Imu"],
+      "publishers": [
+        {
+          "node": "/sensor_node",
+          "qos": {
+            "reliability": "BEST_EFFORT",
+            "history_depth": "KEEP_LAST (200)",
+            "durability": "VOLATILE",
+            "lifespan": "Infinite",
+            "deadline": "Infinite",
+            "liveliness": "AUTOMATIC",
+            "liveliness_lease_duration": "Infinite"
+          }
+        }
+      ],
+      "subscribers": [
+        {
+          "node": "/perception_node",
+          "qos": {
+            "reliability": "BEST_EFFORT",
+            "history_depth": "KEEP_LAST (200)",
+            "durability": "VOLATILE",
+            "lifespan": "Infinite",
+            "deadline": "Infinite",
+            "liveliness": "AUTOMATIC",
+            "liveliness_lease_duration": "Infinite"
+          }
+        }
+      ]
+    },
+    {
+      "name": "/sensor/lidar",
+      "types": ["sensor_msgs/msg/LaserScan"],
+      "publishers": [
+        {
+          "node": "/sensor_node",
+          "qos": {
+            "reliability": "BEST_EFFORT",
+            "history_depth": "KEEP_LAST (10)",
+            "durability": "VOLATILE",
+            "lifespan": "Infinite",
+            "deadline": "Infinite",
+            "liveliness": "AUTOMATIC",
+            "liveliness_lease_duration": "Infinite"
+          }
+        }
+      ],
+      "subscribers": [
+        {
+          "node": "/perception_node",
+          "qos": {
+            "reliability": "BEST_EFFORT",
+            "history_depth": "KEEP_LAST (10)",
+            "durability": "VOLATILE",
+            "lifespan": "Infinite",
+            "deadline": "Infinite",
+            "liveliness": "AUTOMATIC",
+            "liveliness_lease_duration": "Infinite"
+          }
+        }
+      ]
+    },
+    {
+      "name": "/sensor/camera",
+      "types": ["sensor_msgs/msg/Image"],
+      "publishers": [
+        {
+          "node": "/sensor_node",
+          "qos": {
+            "reliability": "BEST_EFFORT",
+            "history_depth": "KEEP_LAST (5)",
+            "durability": "VOLATILE",
+            "lifespan": "Infinite",
+            "deadline": "Infinite",
+            "liveliness": "AUTOMATIC",
+            "liveliness_lease_duration": "Infinite"
+          }
+        }
+      ],
+      "subscribers": [
+        {
+          "node": "/perception_node",
+          "qos": {
+            "reliability": "BEST_EFFORT",
+            "history_depth": "KEEP_LAST (5)",
+            "durability": "VOLATILE",
+            "lifespan": "Infinite",
+            "deadline": "Infinite",
+            "liveliness": "AUTOMATIC",
+            "liveliness_lease_duration": "Infinite"
+          }
+        }
+      ]
+    },
+    {
+      "name": "/sensor/gps",
+      "types": ["sensor_msgs/msg/NavSatFix"],
+      "publishers": [
+        {
+          "node": "/sensor_node",
+          "qos": {
+            "reliability": "RELIABLE",
+            "history_depth": "KEEP_LAST (10)",
+            "durability": "VOLATILE",
+            "lifespan": "Infinite",
+            "deadline": "Infinite",
+            "liveliness": "AUTOMATIC",
+            "liveliness_lease_duration": "Infinite"
+          }
+        }
+      ],
+      "subscribers": [
+        {
+          "node": "/perception_node",
+          "qos": {
+            "reliability": "RELIABLE",
+            "history_depth": "KEEP_LAST (10)",
+            "durability": "VOLATILE",
+            "lifespan": "Infinite",
+            "deadline": "Infinite",
+            "liveliness": "AUTOMATIC",
+            "liveliness_lease_duration": "Infinite"
+          }
+        }
+      ]
+    },
+    {
+      "name": "/perception/objects",
+      "types": ["vision_msgs/msg/Detection3DArray"],
+      "publishers": [
+        {
+          "node": "/perception_node",
+          "qos": {
+            "reliability": "RELIABLE",
+            "history_depth": "KEEP_LAST (10)",
+            "durability": "VOLATILE",
+            "lifespan": "Infinite",
+            "deadline": "Infinite",
+            "liveliness": "AUTOMATIC",
+            "liveliness_lease_duration": "Infinite"
+          }
+        }
+      ],
+      "subscribers": [
+        {
+          "node": "/control_node",
+          "qos": {
+            "reliability": "RELIABLE",
+            "history_depth": "KEEP_LAST (10)",
+            "durability": "VOLATILE",
+            "lifespan": "Infinite",
+            "deadline": "Infinite",
+            "liveliness": "AUTOMATIC",
+            "liveliness_lease_duration": "Infinite"
+          }
+        }
+      ]
+    },
+    {
+      "name": "/perception/map",
+      "types": ["nav_msgs/msg/OccupancyGrid"],
+      "publishers": [
+        {
+          "node": "/perception_node",
+          "qos": {
+            "reliability": "RELIABLE",
+            "history_depth": "KEEP_LAST (1)",
+            "durability": "TRANSIENT_LOCAL",
+            "lifespan": "Infinite",
+            "deadline": "Infinite",
+            "liveliness": "AUTOMATIC",
+            "liveliness_lease_duration": "Infinite"
+          }
+        }
+      ],
+      "subscribers": [
+        {
+          "node": "/control_node",
+          "qos": {
+            "reliability": "RELIABLE",
+            "history_depth": "KEEP_LAST (1)",
+            "durability": "TRANSIENT_LOCAL",
+            "lifespan": "Infinite",
+            "deadline": "Infinite",
+            "liveliness": "AUTOMATIC",
+            "liveliness_lease_duration": "Infinite"
+          }
+        }
+      ]
+    },
+    {
+      "name": "/perception/ego_pose",
+      "types": ["geometry_msgs/msg/PoseWithCovarianceStamped"],
+      "publishers": [
+        {
+          "node": "/perception_node",
+          "qos": {
+            "reliability": "RELIABLE",
+            "history_depth": "KEEP_LAST (10)",
+            "durability": "VOLATILE",
+            "lifespan": "Infinite",
+            "deadline": "Infinite",
+            "liveliness": "AUTOMATIC",
+            "liveliness_lease_duration": "Infinite"
+          }
+        }
+      ],
+      "subscribers": [
+        {
+          "node": "/control_node",
+          "qos": {
+            "reliability": "RELIABLE",
+            "history_depth": "KEEP_LAST (10)",
+            "durability": "VOLATILE",
+            "lifespan": "Infinite",
+            "deadline": "Infinite",
+            "liveliness": "AUTOMATIC",
+            "liveliness_lease_duration": "Infinite"
+          }
+        }
+      ]
+    },
+    {
+      "name": "/perception/trajectory",
+      "types": ["nav_msgs/msg/Path"],
+      "publishers": [
+        {
+          "node": "/perception_node",
+          "qos": {
+            "reliability": "RELIABLE",
+            "history_depth": "KEEP_LAST (5)",
+            "durability": "VOLATILE",
+            "lifespan": "Infinite",
+            "deadline": "Infinite",
+            "liveliness": "AUTOMATIC",
+            "liveliness_lease_duration": "Infinite"
+          }
+        }
+      ],
+      "subscribers": [
+        {
+          "node": "/control_node",
+          "qos": {
+            "reliability": "RELIABLE",
+            "history_depth": "KEEP_LAST (5)",
+            "durability": "VOLATILE",
+            "lifespan": "Infinite",
+            "deadline": "Infinite",
+            "liveliness": "AUTOMATIC",
+            "liveliness_lease_duration": "Infinite"
+          }
+        }
+      ]
+    },
+    {
+      "name": "/control/cmd_vel",
+      "types": ["geometry_msgs/msg/Twist"],
+      "publishers": [
+        {
+          "node": "/control_node",
+          "qos": {
+            "reliability": "RELIABLE",
+            "history_depth": "KEEP_LAST (1)",
+            "durability": "VOLATILE",
+            "lifespan": "0.1s",
+            "deadline": "0.1s",
+            "liveliness": "AUTOMATIC",
+            "liveliness_lease_duration": "Infinite"
+          }
+        }
+      ],
+      "subscribers": []
+    },
+    {
+      "name": "/control/status",
+      "types": ["std_msgs/msg/String"],
+      "publishers": [
+        {
+          "node": "/control_node",
+          "qos": {
+            "reliability": "RELIABLE",
+            "history_depth": "KEEP_LAST (10)",
+            "durability": "VOLATILE",
+            "lifespan": "Infinite",
+            "deadline": "Infinite",
+            "liveliness": "AUTOMATIC",
+            "liveliness_lease_duration": "Infinite"
+          }
+        }
+      ],
+      "subscribers": []
+    }
+  ],
+  "services": [],
+  "actions": []
+}
