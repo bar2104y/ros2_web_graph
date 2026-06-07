@@ -814,11 +814,6 @@ function wireEvents() {
     if (this.files[0]) loadDataFromFile(this.files[0]);
   });
 
-  // File picker label click
-  document.querySelector('.file-pick-btn').addEventListener('click', () => {
-    document.getElementById('data-file-input').click();
-  });
-
   // File picker overlay: drag & drop
   const overlay = document.getElementById('overlay');
   overlay.addEventListener('dragover', e => {

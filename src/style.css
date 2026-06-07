@@ -110,7 +110,8 @@ body {
 
 #theme-toggle,
 #settings-export,
-#settings-import {
+#settings-import,
+#open-file-btn {
   background: none;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -130,7 +131,8 @@ body {
 
 #theme-toggle:hover,
 #settings-export:hover,
-#settings-import:hover {
+#settings-import:hover,
+#open-file-btn:hover {
   color: var(--accent);
   border-color: var(--accent);
 }
