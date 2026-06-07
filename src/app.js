@@ -1436,7 +1436,7 @@ function scriptLostNodes() {
         return !e || (e.obj.subscribers ?? []).length === 0;
       });
       if (orphans.length === node.publishers.length)
-        results.push({ node: node.name, category: 'Публикует в пустоту', topics: orphans.map(p => p.topic) });
+        results.push({ node: node.name, category: 'Publishes to void', topics: orphans.map(p => p.topic) });
     }
     if (node.subscribers.length > 0) {
       const orphans = node.subscribers.filter(s => {
@@ -1444,7 +1444,7 @@ function scriptLostNodes() {
         return !e || (e.obj.publishers ?? []).length === 0;
       });
       if (orphans.length === node.subscribers.length)
-        results.push({ node: node.name, category: 'Слушает пустоту', topics: orphans.map(s => s.topic) });
+        results.push({ node: node.name, category: 'Listens to void', topics: orphans.map(s => s.topic) });
     }
   }
   return results;
@@ -1490,32 +1490,32 @@ function scriptQosErrors() {
 // ---------------------------------------------------------------------------
 
 function buildLostNodesHtml(rows) {
-  if (!rows.length) return '<p class="script-result-empty">Нод-потеряшек не найдено.</p>';
+  if (!rows.length) return '<p class="script-result-empty">No orphan nodes found.</p>';
   const trs = rows.map(r =>
     `<tr><td>${escHtml(r.node)}</td>` +
     `<td><span class="result-category-badge">${escHtml(r.category)}</span></td>` +
     `<td>${r.topics.map(escHtml).join('<br>')}</td></tr>`
   ).join('');
-  return `<table class="script-result-table"><thead><tr><th>Нода</th><th>Категория</th><th>Топики</th></tr></thead><tbody>${trs}</tbody></table>`;
+  return `<table class="script-result-table"><thead><tr><th>Node</th><th>Category</th><th>Topics</th></tr></thead><tbody>${trs}</tbody></table>`;
 }
 
 function buildHeavyTopicsHtml(rows, n) {
-  if (!rows.length) return `<p class="script-result-empty">Нет топиков с более чем ${n} публикаторами.</p>`;
+  if (!rows.length) return `<p class="script-result-empty">No topics with more than ${n} publishers.</p>`;
   const trs = rows.map(r =>
     `<tr><td>${escHtml(r.name)}</td><td>${r.pubCount}</td><td>${r.subCount}</td><td>${escHtml(r.types)}</td></tr>`
   ).join('');
-  return `<table class="script-result-table"><thead><tr><th>Топик</th><th>Публ.</th><th>Подп.</th><th>Типы</th></tr></thead><tbody>${trs}</tbody></table>`;
+  return `<table class="script-result-table"><thead><tr><th>Topic</th><th>Pubs</th><th>Subs</th><th>Types</th></tr></thead><tbody>${trs}</tbody></table>`;
 }
 
 function buildQosErrorsHtml(rows) {
-  if (!rows.length) return '<p class="script-result-empty">Ошибок QoS не обнаружено.</p>';
+  if (!rows.length) return '<p class="script-result-empty">No QoS errors found.</p>';
   const trs = rows.map(r =>
     `<tr><td>${escHtml(r.topic)}</td>` +
     `<td class="qos-conflict">${escHtml(r.field)}</td>` +
     `<td>${r.pubValues.map(escHtml).join(', ')}</td>` +
     `<td>${r.subValues.map(escHtml).join(', ')}</td></tr>`
   ).join('');
-  return `<table class="script-result-table"><thead><tr><th>Топик</th><th>Поле</th><th>Публикатор(ы)</th><th>Подписчик(и)</th></tr></thead><tbody>${trs}</tbody></table>`;
+  return `<table class="script-result-table"><thead><tr><th>Topic</th><th>Field</th><th>Publisher(s)</th><th>Subscriber(s)</th></tr></thead><tbody>${trs}</tbody></table>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1584,15 +1584,15 @@ function runScript(title, html) {
 
 function wireScriptsPanel() {
   document.getElementById('script-lost-nodes').addEventListener('click', () =>
-    runScript('Ноды-потеряшки (топики)', buildLostNodesHtml(scriptLostNodes()))
+    runScript('Orphan nodes (topics)', buildLostNodesHtml(scriptLostNodes()))
   );
 
   document.getElementById('script-heavy-topics').addEventListener('click', () => {
     const n = parseInt(document.getElementById('heavy-topics-n').value, 10) || 3;
-    runScript(`Нагруженные топики (> ${n} публикаторов)`, buildHeavyTopicsHtml(scriptHeavyTopics(n), n));
+    runScript(`Heavy topics (> ${n} publishers)`, buildHeavyTopicsHtml(scriptHeavyTopics(n), n));
   });
 
   document.getElementById('script-qos-errors').addEventListener('click', () =>
-    runScript('Ошибки QoS', buildQosErrorsHtml(scriptQosErrors()))
+    runScript('QoS errors', buildQosErrorsHtml(scriptQosErrors()))
   );
 }

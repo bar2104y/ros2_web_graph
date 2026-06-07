@@ -119,34 +119,34 @@
   <!-- Scripts panel -->
   <aside id="scripts-panel">
     <div id="scripts-panel-header">
-      <span id="scripts-panel-title">Скрипты</span>
-      <button id="scripts-collapse-btn" title="Свернуть">&#x276E;</button>
+      <span id="scripts-panel-title">Scripts</span>
+      <button id="scripts-collapse-btn" title="Collapse">&#x276E;</button>
     </div>
     <div id="scripts-panel-body">
       <div id="scripts-output-row">
         <label class="scripts-output-label">
           <input type="radio" name="scripts_output" value="modal" id="scripts-out-modal" checked>
-          Модальное окно
+          Modal window
         </label>
         <label class="scripts-output-label">
           <input type="radio" name="scripts_output" value="tab" id="scripts-out-tab">
-          Новая вкладка
+          New tab
         </label>
       </div>
       <div class="scripts-divider"></div>
 
       <div class="script-item">
-        <button class="script-btn" id="script-lost-nodes" disabled>Ноды-потеряшки (топики)</button>
+        <button class="script-btn" id="script-lost-nodes" disabled>Orphan nodes (topics)</button>
       </div>
       <div class="script-item">
         <div class="script-item-row">
-          <button class="script-btn" id="script-heavy-topics" disabled>Нагруженные топики</button>
+          <button class="script-btn" id="script-heavy-topics" disabled>Heavy topics</button>
           <input type="number" id="heavy-topics-n" value="3" min="1" max="99"
-                 class="script-n-input" title="Порог числа публикаторов">
+                 class="script-n-input" title="Publisher count threshold">
         </div>
       </div>
       <div class="script-item">
-        <button class="script-btn" id="script-qos-errors" disabled>Ошибки QoS</button>
+        <button class="script-btn" id="script-qos-errors" disabled>QoS errors</button>
       </div>
     </div>
   </aside>
@@ -156,7 +156,7 @@
     <div id="script-modal-box">
       <div id="script-modal-titlebar">
         <span id="script-modal-title"></span>
-        <button id="script-modal-close" title="Закрыть">&times;</button>
+        <button id="script-modal-close" title="Close">&times;</button>
       </div>
       <div id="script-modal-body"></div>
     </div>
