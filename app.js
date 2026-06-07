@@ -15,6 +15,7 @@ const STATE = {
   hiddenEntities: new Set(), // individual entity names hidden from graph
   colorMode: 'type',         // 'type' | 'namespace'
   nsRules: [],               // [{ pattern: string, color: string }]
+  nodeAnalyzeMode: false,    // collapse topics/services/actions into node-to-node edges
 };
 
 // ---------------------------------------------------------------------------
@@ -47,6 +48,15 @@ function loadNsRulesFromCookie() {
 function saveNsRulesToCookie() {
   const val = encodeURIComponent(JSON.stringify(STATE.nsRules));
   document.cookie = `ros2_ns_rules=${val}; max-age=31536000; path=/`;
+}
+
+function loadNodeAnalyzeModeFromCookie() {
+  const m = document.cookie.split(';').find(c => c.trim().startsWith('ros2_node_analyze='));
+  if (m) STATE.nodeAnalyzeMode = m.trim().slice('ros2_node_analyze='.length) === '1';
+}
+
+function saveNodeAnalyzeModeToCookie() {
+  document.cookie = `ros2_node_analyze=${STATE.nodeAnalyzeMode ? 1 : 0}; max-age=31536000; path=/`;
 }
 
 function toggleEntityVisibility(name) {
@@ -220,6 +230,33 @@ function buildCyStyle() {
       selector: "edge[edgeType='action_client']",
       style: { 'line-color': c.edgeActCli, 'target-arrow-color': c.edgeActCli },
     },
+    // Node Analyze mode: one edge per intermediate topic/service/action
+    {
+      selector: "edge[edgeType='topic']",
+      style: { 'line-color': c.topic, 'target-arrow-color': c.topic },
+    },
+    {
+      selector: "edge[edgeType='service']",
+      style: { 'line-color': c.service, 'target-arrow-color': c.service },
+    },
+    {
+      selector: "edge[edgeType='action']",
+      style: { 'line-color': c.action, 'target-arrow-color': c.action },
+    },
+    {
+      selector: 'edge[?analyzeEdge]',
+      style: {
+        'label': 'data(label)',
+        'color': c.edgeLabel,
+        'font-size': 9,
+        'font-family': 'monospace',
+        'text-rotation': 'autorotate',
+        'text-background-color': c.edgeLabelBg,
+        'text-background-opacity': 0.7,
+        'text-background-padding': '2px',
+        'width': 2,
+      },
+    },
   ];
 
   if (STATE.colorMode === 'namespace') {
@@ -229,6 +266,13 @@ function buildCyStyle() {
         'background-color': 'data(nsColor)',
         'color': 'data(nsTextColor)',
         'shape': 'round-rectangle',
+      },
+    });
+    styles.push({
+      selector: 'edge[?analyzeEdge]',
+      style: {
+        'line-color': 'data(nsColor)',
+        'target-arrow-color': 'data(nsColor)',
       },
     });
   }
@@ -663,6 +707,149 @@ function buildGraphElements(type, name, depth) {
   return [...connectedNodes, ...validEdges];
 }
 
+// Node Analyze mode: collapse intermediate topics/services/actions into direct node-to-node edges.
+function buildNodeAnalyzeElements(name, depth) {
+  const visited = new Set();
+  const edgeSet = new Set();
+  const nodeElements = [];
+  const pendingEdges = [];
+  const queue = [{ name, hop: 0 }];
+  let truncated = false;
+
+  const addEdge = (src, tgt, intermediateEntity, edgeType) => {
+    if (src === tgt) return;
+    if (STATE.hiddenEntities.has(intermediateEntity)) return;
+    if (STATE.hiddenTypes.has(edgeType)) return;
+    const edgeId = `${src}--${intermediateEntity}--${tgt}`;
+    if (edgeSet.has(edgeId)) return;
+    edgeSet.add(edgeId);
+    pendingEdges.push({
+      group: 'edges',
+      data: {
+        id: edgeId,
+        source: src,
+        target: tgt,
+        label: shortLabel(intermediateEntity),
+        edgeType,
+        analyzeEdge: true,
+        nsColor: nsColorForName(intermediateEntity),
+      },
+    });
+  };
+
+  while (queue.length > 0) {
+    if (nodeElements.length >= MAX_GRAPH_ELEMENTS) {
+      truncated = true;
+      break;
+    }
+
+    const { name: cur, hop } = queue.shift();
+    if (visited.has(cur)) continue;
+
+    const entry = STATE.index[cur];
+    if (!entry || entry.type !== 'node') continue;
+
+    if (cur !== name && (STATE.hiddenEntities.has(cur) || STATE.hiddenTypes.has('node'))) continue;
+
+    visited.add(cur);
+
+    const isRoot = cur === name;
+    const nsColor = nsColorForName(cur);
+    nodeElements.push({
+      group: 'nodes',
+      data: { id: cur, label: shortLabel(cur), entityType: 'node', nsColor, nsTextColor: textColorForBg(nsColor) },
+      classes: isRoot ? 'selected-root' : '',
+    });
+
+    if (hop >= depth) continue;
+
+    const obj = entry.obj;
+
+    const canVisit = n => !visited.has(n) && !STATE.hiddenEntities.has(n) && !STATE.hiddenTypes.has('node');
+
+    for (const pub of obj.publishers) {
+      const te = STATE.index[pub.topic];
+      if (!te) continue;
+      for (const sub of te.obj.subscribers) {
+        addEdge(cur, sub.node, pub.topic, 'topic');
+        if (canVisit(sub.node)) queue.push({ name: sub.node, hop: hop + 1 });
+      }
+    }
+
+    for (const sub of obj.subscribers) {
+      const te = STATE.index[sub.topic];
+      if (!te) continue;
+      for (const pub of te.obj.publishers) {
+        addEdge(pub.node, cur, sub.topic, 'topic');
+        if (canVisit(pub.node)) queue.push({ name: pub.node, hop: hop + 1 });
+      }
+    }
+
+    for (const srv of obj.service_servers) {
+      const se = STATE.index[srv.service];
+      if (!se) continue;
+      for (const cli of se.obj.clients) {
+        addEdge(cli.node, cur, srv.service, 'service');
+        if (canVisit(cli.node)) queue.push({ name: cli.node, hop: hop + 1 });
+      }
+    }
+
+    for (const cli of obj.service_clients) {
+      const se = STATE.index[cli.service];
+      if (!se) continue;
+      for (const srv of se.obj.servers) {
+        addEdge(cur, srv.node, cli.service, 'service');
+        if (canVisit(srv.node)) queue.push({ name: srv.node, hop: hop + 1 });
+      }
+    }
+
+    for (const srv of obj.action_servers) {
+      const ae = STATE.index[srv.action];
+      if (!ae) continue;
+      for (const cli of ae.obj.clients) {
+        addEdge(cli.node, cur, srv.action, 'action');
+        if (canVisit(cli.node)) queue.push({ name: cli.node, hop: hop + 1 });
+      }
+    }
+
+    for (const cli of obj.action_clients) {
+      const ae = STATE.index[cli.action];
+      if (!ae) continue;
+      for (const srv of ae.obj.servers) {
+        addEdge(cur, srv.node, cli.action, 'action');
+        if (canVisit(srv.node)) queue.push({ name: srv.node, hop: hop + 1 });
+      }
+    }
+  }
+
+  if (truncated) {
+    nodeElements.push({
+      group: 'nodes',
+      data: { id: '__truncated__', label: '... truncated', entityType: 'info' },
+    });
+  }
+
+  const visibleNodes = nodeElements.filter(n =>
+    n.data.id === name ||
+    n.data.id === '__truncated__' ||
+    (!STATE.hiddenEntities.has(n.data.id) && !STATE.hiddenTypes.has(n.data.entityType))
+  );
+  const visibleIds = new Set(visibleNodes.map(n => n.data.id));
+
+  const validEdges = pendingEdges.filter(e =>
+    visibleIds.has(e.data.source) && visibleIds.has(e.data.target)
+  );
+
+  const connectedIds = new Set([name]);
+  for (const e of validEdges) {
+    connectedIds.add(e.data.source);
+    connectedIds.add(e.data.target);
+  }
+  const connectedNodes = visibleNodes.filter(n => connectedIds.has(n.data.id));
+
+  return [...connectedNodes, ...validEdges];
+}
+
 function shortLabel(name) {
   // Show last two path segments for readability
   const parts = name.split('/').filter(Boolean);
@@ -675,7 +862,9 @@ function shortLabel(name) {
 // ---------------------------------------------------------------------------
 
 function renderGraph(type, name, depth) {
-  const elements = buildGraphElements(type, name, depth);
+  const elements = (STATE.nodeAnalyzeMode && type === 'node')
+    ? buildNodeAnalyzeElements(name, depth)
+    : buildGraphElements(type, name, depth);
   const container = document.getElementById('cy');
 
   container.style.opacity = '0';
@@ -784,6 +973,14 @@ function wireEvents() {
         renderGraph(STATE.selected.type, STATE.selected.name, STATE.depth);
       }
     });
+  });
+
+  // Node Analyze toggle
+  document.getElementById('node-analyze-toggle').addEventListener('click', () => {
+    STATE.nodeAnalyzeMode = !STATE.nodeAnalyzeMode;
+    document.getElementById('node-analyze-toggle').classList.toggle('active', STATE.nodeAnalyzeMode);
+    saveNodeAnalyzeModeToCookie();
+    if (STATE.selected) renderGraph(STATE.selected.type, STATE.selected.name, STATE.depth);
   });
 
   // Depth slider
@@ -1029,6 +1226,7 @@ function gatherSettings() {
     nsRules:        STATE.nsRules,
     colorMode:      STATE.colorMode,
     depth:          STATE.depth,
+    nodeAnalyzeMode: STATE.nodeAnalyzeMode,
     theme:          document.documentElement.dataset.theme || '',
     sidebarWidth:   document.getElementById('sidebar').offsetWidth || null,
     detailsHeight:  document.getElementById('details-panel').offsetHeight || null,
@@ -1060,6 +1258,12 @@ function buildAppliers() {
         if (slider) slider.value = n;
         if (label)  label.textContent = n;
       }
+    },
+    nodeAnalyzeMode: v => {
+      STATE.nodeAnalyzeMode = !!v;
+      const btn = document.getElementById('node-analyze-toggle');
+      if (btn) btn.classList.toggle('active', STATE.nodeAnalyzeMode);
+      saveNodeAnalyzeModeToCookie();
     },
     theme: v => {
       const t = (v === 'light') ? 'light' : '';
@@ -1143,10 +1347,14 @@ function wireSettingsIO() {
 
 loadHiddenFromCookie();
 loadNsRulesFromCookie();
+loadNodeAnalyzeModeFromCookie();
 initCytoscape();
 initResizeHandles();
 wireEvents();
 wireCtxMenu();
 wireNsRules();
 wireSettingsIO();
+if (STATE.nodeAnalyzeMode) {
+  document.getElementById('node-analyze-toggle').classList.add('active');
+}
 showFilePicker();
