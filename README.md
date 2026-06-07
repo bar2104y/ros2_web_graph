@@ -26,7 +26,7 @@ ros2_analyze/
 # Убедитесь, что ROS2 sourced:
 # source /opt/ros/humble/setup.bash
 
-python collector/collect.py -o ros2_env.json --verbose
+python collector/collect.py -o ros2_env.json --name "robot-arm v2" --verbose
 ```
 
 **Опции:**
@@ -34,8 +34,10 @@ python collector/collect.py -o ros2_env.json --verbose
 | Флаг | По умолчанию | Описание |
 |------|-------------|---------|
 | `-o FILE` | `ros2_env.json` | Выходной JSON-файл |
+| `--name TEXT` | — | Кастомное имя сборки (отображается в UI рядом с датой) |
 | `--timeout N` | `10` | Таймаут на одну команду (сек) |
 | `--verbose` | — | Выводить предупреждения о сбоях |
+| `--workers N` | `4` | Число параллельных потоков |
 
 Коллектор использует только stdlib Python, без внешних зависимостей.
 
@@ -85,6 +87,7 @@ scp robot@<ip>:/path/to/ros2_env.json .
 ```json
 {
   "collected_at": "2026-06-05T10:00:00Z",
+  "build_name": "robot-arm v2",
   "nodes": [
     {
       "name": "/talker",

@@ -337,6 +337,7 @@ function loadDataFromFile(file) {
       document.getElementById('details-empty').style.display = '';
       document.getElementById('details-content').style.display = 'none';
       renderSidebar();
+      updateScriptButtonsState();
     } catch (err) {
       showOverlayError('Invalid JSON: ' + err.message);
     }
@@ -387,8 +388,9 @@ function updateCollectedAt() {
   const ts = STATE.data?.collected_at;
   if (!ts) return;
   const d = new Date(ts);
-  document.getElementById('collected-at').textContent =
-    'Collected: ' + d.toLocaleString();
+  const name = STATE.data?.build_name;
+  const label = (name ? name + ' — ' : '') + 'Collected: ' + d.toLocaleString();
+  document.getElementById('collected-at').textContent = label;
 }
 
 // ---------------------------------------------------------------------------
@@ -1184,6 +1186,11 @@ function initResizeHandles() {
       setPanelCookie('ros2_details_h', detailsPanel.offsetHeight);
     },
   });
+
+  // Restore scripts panel size and collapsed state
+  const savedScriptsW = getCookieStr('ros2_scripts_w');
+  if (savedScriptsW) document.getElementById('scripts-panel').style.width = parseInt(savedScriptsW, 10) + 'px';
+  if (getCookieStr('ros2_scripts_collapsed') === '1') applyScriptsPanelCollapsed(true);
 }
 
 function initDrag(handle, { onStart, onMove, onEnd }) {
@@ -1357,4 +1364,235 @@ wireSettingsIO();
 if (STATE.nodeAnalyzeMode) {
   document.getElementById('node-analyze-toggle').classList.add('active');
 }
+initScriptsPanelResize();
+wireScriptsPanel();
+wireScriptModal();
 showFilePicker();
+
+// ---------------------------------------------------------------------------
+// Scripts panel — cookie helper, resize, collapse
+// ---------------------------------------------------------------------------
+
+function getCookieStr(name) {
+  const m = document.cookie.split(';').find(c => c.trim().startsWith(name + '='));
+  return m ? m.trim().slice(name.length + 1) : null;
+}
+
+function updateScriptButtonsState() {
+  document.querySelectorAll('.script-btn').forEach(b => { b.disabled = STATE.data === null; });
+}
+
+function initScriptsPanelResize() {
+  const panel  = document.getElementById('scripts-panel');
+  const handle = document.getElementById('scripts-resize');
+
+  const savedOut = getCookieStr('ros2_scripts_output') || 'modal';
+  document.getElementById(savedOut === 'tab' ? 'scripts-out-tab' : 'scripts-out-modal').checked = true;
+
+  // Handle is LEFT of panel, so dragging right shrinks panel: width = startVal - delta.x
+  initDrag(handle, {
+    onStart: () => ({ start: panel.offsetWidth }),
+    onMove: ({ startVal, delta }) => {
+      panel.style.width = Math.max(180, Math.min(520, startVal - delta.x)) + 'px';
+      if (cy) cy.resize();
+    },
+    onEnd: () => {
+      if (cy) cy.resize();
+      setPanelCookie('ros2_scripts_w', panel.offsetWidth);
+    },
+  });
+
+  document.getElementById('scripts-collapse-btn').addEventListener('click', () => {
+    const collapsed = !panel.classList.contains('collapsed');
+    applyScriptsPanelCollapsed(collapsed);
+    setPanelCookie('ros2_scripts_collapsed', collapsed ? '1' : '0');
+  });
+
+  document.querySelectorAll('input[name="scripts_output"]').forEach(r =>
+    r.addEventListener('change', () => setPanelCookie('ros2_scripts_output', r.value))
+  );
+}
+
+function applyScriptsPanelCollapsed(collapsed) {
+  document.getElementById('scripts-panel').classList.toggle('collapsed', collapsed);
+  document.getElementById('scripts-resize').classList.toggle('panel-collapsed', collapsed);
+  if (cy) cy.resize();
+}
+
+function getScriptsOutputMode() {
+  return document.querySelector('input[name="scripts_output"]:checked')?.value ?? 'modal';
+}
+
+// ---------------------------------------------------------------------------
+// Scripts — analytics
+// ---------------------------------------------------------------------------
+
+function scriptLostNodes() {
+  const results = [];
+  for (const node of STATE.data.nodes) {
+    if (node.publishers.length > 0) {
+      const orphans = node.publishers.filter(p => {
+        const e = STATE.index[p.topic];
+        return !e || (e.obj.subscribers ?? []).length === 0;
+      });
+      if (orphans.length === node.publishers.length)
+        results.push({ node: node.name, category: 'Публикует в пустоту', topics: orphans.map(p => p.topic) });
+    }
+    if (node.subscribers.length > 0) {
+      const orphans = node.subscribers.filter(s => {
+        const e = STATE.index[s.topic];
+        return !e || (e.obj.publishers ?? []).length === 0;
+      });
+      if (orphans.length === node.subscribers.length)
+        results.push({ node: node.name, category: 'Слушает пустоту', topics: orphans.map(s => s.topic) });
+    }
+  }
+  return results;
+}
+
+function scriptHeavyTopics(threshold) {
+  const n = Math.max(1, parseInt(threshold, 10) || 3);
+  return STATE.data.topics
+    .filter(t => (t.publishers ?? []).length > n)
+    .map(t => ({
+      name: t.name,
+      pubCount: t.publishers.length,
+      subCount: (t.subscribers ?? []).length,
+      types: (t.types ?? []).join(', ') || '—',
+    }))
+    .sort((a, b) => b.pubCount - a.pubCount);
+}
+
+// pub BEST_EFFORT + sub RELIABLE = incompatible
+// pub VOLATILE + sub TRANSIENT_LOCAL = incompatible
+function scriptQosErrors() {
+  const RULES = [
+    { field: 'reliability', check: (p, s) => p === 'BEST_EFFORT' && s === 'RELIABLE' },
+    { field: 'durability',  check: (p, s) => p === 'VOLATILE'    && s === 'TRANSIENT_LOCAL' },
+  ];
+  const results = [];
+  for (const topic of STATE.data.topics) {
+    const pubs = (topic.publishers  ?? []).filter(p => p.qos && Object.keys(p.qos).length > 0);
+    const subs = (topic.subscribers ?? []).filter(s => s.qos && Object.keys(s.qos).length > 0);
+    if (!pubs.length || !subs.length) continue;
+    for (const rule of RULES) {
+      const pv = [...new Set(pubs.map(p => (p.qos[rule.field] || '').toUpperCase()).filter(Boolean))];
+      const sv = [...new Set(subs.map(s => (s.qos[rule.field] || '').toUpperCase()).filter(Boolean))];
+      if (pv.length && sv.length && pv.some(p => sv.some(s => rule.check(p, s))))
+        results.push({ topic: topic.name, field: rule.field, pubValues: pv, subValues: sv });
+    }
+  }
+  return results;
+}
+
+// ---------------------------------------------------------------------------
+// Scripts — HTML builders
+// ---------------------------------------------------------------------------
+
+function buildLostNodesHtml(rows) {
+  if (!rows.length) return '<p class="script-result-empty">Нод-потеряшек не найдено.</p>';
+  const trs = rows.map(r =>
+    `<tr><td>${escHtml(r.node)}</td>` +
+    `<td><span class="result-category-badge">${escHtml(r.category)}</span></td>` +
+    `<td>${r.topics.map(escHtml).join('<br>')}</td></tr>`
+  ).join('');
+  return `<table class="script-result-table"><thead><tr><th>Нода</th><th>Категория</th><th>Топики</th></tr></thead><tbody>${trs}</tbody></table>`;
+}
+
+function buildHeavyTopicsHtml(rows, n) {
+  if (!rows.length) return `<p class="script-result-empty">Нет топиков с более чем ${n} публикаторами.</p>`;
+  const trs = rows.map(r =>
+    `<tr><td>${escHtml(r.name)}</td><td>${r.pubCount}</td><td>${r.subCount}</td><td>${escHtml(r.types)}</td></tr>`
+  ).join('');
+  return `<table class="script-result-table"><thead><tr><th>Топик</th><th>Публ.</th><th>Подп.</th><th>Типы</th></tr></thead><tbody>${trs}</tbody></table>`;
+}
+
+function buildQosErrorsHtml(rows) {
+  if (!rows.length) return '<p class="script-result-empty">Ошибок QoS не обнаружено.</p>';
+  const trs = rows.map(r =>
+    `<tr><td>${escHtml(r.topic)}</td>` +
+    `<td class="qos-conflict">${escHtml(r.field)}</td>` +
+    `<td>${r.pubValues.map(escHtml).join(', ')}</td>` +
+    `<td>${r.subValues.map(escHtml).join(', ')}</td></tr>`
+  ).join('');
+  return `<table class="script-result-table"><thead><tr><th>Топик</th><th>Поле</th><th>Публикатор(ы)</th><th>Подписчик(и)</th></tr></thead><tbody>${trs}</tbody></table>`;
+}
+
+// ---------------------------------------------------------------------------
+// Scripts — modal
+// ---------------------------------------------------------------------------
+
+function openScriptModal(title, html) {
+  document.getElementById('script-modal-title').textContent = title;
+  document.getElementById('script-modal-body').innerHTML = html;
+  document.getElementById('script-modal').classList.remove('hidden');
+}
+
+function closeScriptModal() {
+  document.getElementById('script-modal').classList.add('hidden');
+  document.getElementById('script-modal-body').innerHTML = '';
+}
+
+function wireScriptModal() {
+  document.getElementById('script-modal-close').addEventListener('click', closeScriptModal);
+  document.getElementById('script-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('script-modal')) closeScriptModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !document.getElementById('script-modal').classList.contains('hidden'))
+      closeScriptModal();
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Scripts — new tab output
+// ---------------------------------------------------------------------------
+
+function openScriptInTab(title, htmlContent) {
+  const isDark = (document.documentElement.dataset.theme || '') !== 'light';
+  const c = isDark
+    ? { bg: '#12121f', bg2: '#1a1a2e', border: '#2e2e4a', text: '#d0d0e8', muted: '#7070a0', accent: '#4a90d9' }
+    : { bg: '#ffffff', bg2: '#f4f4fc', border: '#c8c8dc', text: '#1a1a2e', muted: '#6060a0', accent: '#2a6ec4' };
+  const doc = `<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8">
+<title>${escHtml(title)} — ROS2 Analyzer</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:monospace;font-size:13px;background:${c.bg};color:${c.text};padding:24px 32px}
+h1{font-size:15px;font-weight:600;color:${c.accent};margin-bottom:16px}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th{text-align:left;padding:6px 10px;color:${c.muted};font-weight:600;border-bottom:2px solid ${c.border};white-space:nowrap}
+td{padding:5px 10px;color:${c.text};border-bottom:1px solid ${c.border};vertical-align:top;word-break:break-all}
+tr:last-child td{border-bottom:none}tr:hover td{background:${c.bg2}}
+.script-result-empty{color:${c.muted};text-align:center;padding:20px}
+.result-category-badge{font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;background:${c.bg2};color:${c.muted};border:1px solid ${c.border}}
+.qos-conflict{color:#e06060;font-weight:600}
+</style></head><body>
+<h1>${escHtml(title)}</h1>${htmlContent}</body></html>`;
+  const url = URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
+  window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+// ---------------------------------------------------------------------------
+// Scripts — dispatch and button wiring
+// ---------------------------------------------------------------------------
+
+function runScript(title, html) {
+  if (getScriptsOutputMode() === 'tab') openScriptInTab(title, html);
+  else openScriptModal(title, html);
+}
+
+function wireScriptsPanel() {
+  document.getElementById('script-lost-nodes').addEventListener('click', () =>
+    runScript('Ноды-потеряшки (топики)', buildLostNodesHtml(scriptLostNodes()))
+  );
+
+  document.getElementById('script-heavy-topics').addEventListener('click', () => {
+    const n = parseInt(document.getElementById('heavy-topics-n').value, 10) || 3;
+    runScript(`Нагруженные топики (> ${n} публикаторов)`, buildHeavyTopicsHtml(scriptHeavyTopics(n), n));
+  });
+
+  document.getElementById('script-qos-errors').addEventListener('click', () =>
+    runScript('Ошибки QoS', buildQosErrorsHtml(scriptQosErrors()))
+  );
+}

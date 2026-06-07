@@ -1,5 +1,6 @@
 {
   "collected_at": "2026-06-05T10:00:00.000000+00:00",
+  "build_name": "example-robot v1",
   "nodes": [
     {
       "name": "/sensor_node",

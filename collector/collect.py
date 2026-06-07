@@ -393,10 +393,14 @@ def main():
                         help="Print warnings for failed commands")
     parser.add_argument("--workers", type=int, default=4,
                         help="Number of parallel worker threads (default: 4)")
+    parser.add_argument("--name", default=None,
+                        help="Custom build/session name shown in the UI (e.g. 'robot-arm v2')")
     args = parser.parse_args()
 
     collector = ROS2Collector(timeout=args.timeout, verbose=args.verbose, workers=args.workers)
     data = collector.collect()
+    if args.name:
+        data["build_name"] = args.name
 
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
