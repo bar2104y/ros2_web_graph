@@ -1,6 +1,15 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
+// Utilities
+// ---------------------------------------------------------------------------
+
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+// ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 
@@ -67,7 +76,7 @@ function toggleEntityVisibility(name) {
   }
   saveHiddenToCookie();
   renderSidebar();
-  if (STATE.selected) renderGraph(STATE.selected.type, STATE.selected.name, STATE.depth);
+  applyVisibilityToExistingGraph();
 }
 
 // ---------------------------------------------------------------------------
@@ -137,6 +146,17 @@ function textColorForBg(hex) {
   const g = parseInt(h.slice(3, 5), 16);
   const b = parseInt(h.slice(5, 7), 16);
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55 ? '#111111' : '#ffffff';
+}
+
+let _styleCache = null;
+let _styleCacheKey = null;
+
+function buildCyStyleCached() {
+  const key = `${STATE.colorMode}|${document.body.dataset.theme ?? ''}|${JSON.stringify(STATE.nsRules)}`;
+  if (key === _styleCacheKey && _styleCache) return _styleCache;
+  _styleCache = buildCyStyle();
+  _styleCacheKey = key;
+  return _styleCache;
 }
 
 function buildCyStyle() {
@@ -290,7 +310,7 @@ function initCytoscape() {
   cy = cytoscape({
     container: document.getElementById('cy'),
     elements: [],
-    style: buildCyStyle(),
+    style: buildCyStyleCached(),
     layout: { name: 'grid' },
     wheelSensitivity: 0.3,
   });
@@ -316,6 +336,7 @@ function initCytoscape() {
 // ---------------------------------------------------------------------------
 
 function buildIndex() {
+  _neighborsCache = null;
   const idx = STATE.index = {};
   const d = STATE.data;
   for (const n of d.nodes)    idx[n.name] = { type: 'node',    obj: n };
@@ -411,8 +432,12 @@ function renderSidebar() {
   document.getElementById('vis-show-all').disabled = allVisible;
   document.getElementById('vis-hide-all').disabled = allHidden;
 
+  const MAX_SIDEBAR_ITEMS = 200;
+  const visibleItems = items.length > MAX_SIDEBAR_ITEMS ? items.slice(0, MAX_SIDEBAR_ITEMS) : items;
+  const truncated = items.length > MAX_SIDEBAR_ITEMS;
+
   const ul = document.getElementById('entity-list');
-  ul.innerHTML = items.map(e => {
+  ul.innerHTML = visibleItems.map(e => {
     const type = tab.slice(0, -1); // strip trailing 's'
     const active = STATE.selected?.name === e.name ? 'active' : '';
     const hidden = STATE.hiddenEntities.has(e.name);
@@ -422,7 +447,9 @@ function renderSidebar() {
       `<input type="checkbox" class="visibility-cb" ${checked} data-name="${e.name}" title="Toggle visibility in graph">` +
       `<span class="entity-name">${e.name}</span>` +
       `</li>`;
-  }).join('');
+  }).join('') + (truncated
+    ? `<li class="sidebar-truncated">Showing ${MAX_SIDEBAR_ITEMS} of ${items.length} — refine search to see more</li>`
+    : '');
 }
 
 function setVisibilityForCurrentTab(hide) {
@@ -435,7 +462,7 @@ function setVisibilityForCurrentTab(hide) {
   }
   saveHiddenToCookie();
   renderSidebar();
-  if (STATE.selected) renderGraph(STATE.selected.type, STATE.selected.name, STATE.depth);
+  applyVisibilityToExistingGraph();
 }
 
 // ---------------------------------------------------------------------------
@@ -626,6 +653,17 @@ function getNeighbors(name, type, incomingEdge) {
   return result;
 }
 
+let _neighborsCache = null;
+
+function getNeighborsCached(name, type, incomingEdge) {
+  if (!_neighborsCache) _neighborsCache = new Map();
+  const key = `${name}|${type}|${incomingEdge ?? ''}`;
+  if (_neighborsCache.has(key)) return _neighborsCache.get(key);
+  const result = getNeighbors(name, type, incomingEdge);
+  _neighborsCache.set(key, result);
+  return result;
+}
+
 function buildGraphElements(type, name, depth) {
   const visited = new Set();
   const edgeSet = new Set();
@@ -655,7 +693,7 @@ function buildGraphElements(type, name, depth) {
 
     if (hop >= depth) continue;
 
-    const neighbors = getNeighbors(cur, curType, incomingEdge);
+    const neighbors = getNeighborsCached(cur, curType, incomingEdge);
     for (const nb of neighbors) {
       // Edge: source=publisher/server, target=subscriber/client
       let src, tgt;
@@ -863,6 +901,23 @@ function shortLabel(name) {
 // Graph rendering
 // ---------------------------------------------------------------------------
 
+function applyVisibilityToExistingGraph() {
+  if (!cy) return;
+  cy.batch(() => {
+    cy.nodes().forEach(n => {
+      if (n.id() === '__truncated__') return;
+      const entityType = n.data('entityType');
+      const hidden = STATE.hiddenTypes.has(entityType) || STATE.hiddenEntities.has(n.id());
+      n.style('display', hidden ? 'none' : 'element');
+    });
+    cy.edges().forEach(e => {
+      const srcHidden = e.source().style('display') === 'none';
+      const tgtHidden = e.target().style('display') === 'none';
+      e.style('display', (srcHidden || tgtHidden) ? 'none' : 'element');
+    });
+  });
+}
+
 function renderGraph(type, name, depth) {
   const elements = (STATE.nodeAnalyzeMode && type === 'node')
     ? buildNodeAnalyzeElements(name, depth)
@@ -940,9 +995,10 @@ function wireEvents() {
   });
 
   // Search input
+  const debouncedRenderSidebar = debounce(renderSidebar, 150);
   document.getElementById('search').addEventListener('input', e => {
     STATE.searchQuery = e.target.value;
-    renderSidebar();
+    debouncedRenderSidebar();
   });
 
   // Entity list click
@@ -971,10 +1027,13 @@ function wireEvents() {
         STATE.hiddenTypes.add(t);
         item.classList.add('hidden');
       }
-      if (STATE.selected) {
-        renderGraph(STATE.selected.type, STATE.selected.name, STATE.depth);
-      }
+      applyVisibilityToExistingGraph();
     });
+  });
+
+  // Refresh layout button
+  document.getElementById('graph-refresh-btn').addEventListener('click', () => {
+    if (STATE.selected) renderGraph(STATE.selected.type, STATE.selected.name, STATE.depth);
   });
 
   // Node Analyze toggle
@@ -988,12 +1047,13 @@ function wireEvents() {
   // Depth slider
   const slider = document.getElementById('depth-slider');
   const depthLabel = document.getElementById('depth-value');
+  const debouncedRenderGraph = debounce(() => {
+    if (STATE.selected) renderGraph(STATE.selected.type, STATE.selected.name, STATE.depth);
+  }, 200);
   slider.addEventListener('input', () => {
     STATE.depth = parseInt(slider.value, 10);
     depthLabel.textContent = STATE.depth;
-    if (STATE.selected) {
-      renderGraph(STATE.selected.type, STATE.selected.name, STATE.depth);
-    }
+    debouncedRenderGraph();
   });
 
   // Theme toggle
@@ -1002,7 +1062,7 @@ function wireEvents() {
     const light = html.dataset.theme === 'light';
     html.dataset.theme = light ? '' : 'light';
     document.getElementById('theme-toggle').textContent = light ? '☀' : '☾';
-    cy.style(buildCyStyle());
+    cy.style(buildCyStyleCached());
   });
 
   // "Open file" button in header
@@ -1098,7 +1158,7 @@ function wireCtxMenu() {
 function wireNsRules() {
   document.getElementById('color-mode-toggle').addEventListener('click', () => {
     STATE.colorMode = STATE.colorMode === 'type' ? 'namespace' : 'type';
-    cy.style(buildCyStyle());
+    cy.style(buildCyStyleCached());
     renderNsRulesPanel();
     if (STATE.selected) renderGraph(STATE.selected.type, STATE.selected.name, STATE.depth);
   });
@@ -1277,7 +1337,7 @@ function buildAppliers() {
       document.documentElement.dataset.theme = t;
       const btn = document.getElementById('theme-toggle');
       if (btn) btn.textContent = (t === 'light') ? '☾' : '☀';
-      if (cy) cy.style(buildCyStyle());
+      if (cy) cy.style(buildCyStyleCached());
     },
     sidebarWidth: v => {
       const n = parseInt(v, 10);
@@ -1336,7 +1396,7 @@ function wireSettingsIO() {
       applySettings(raw);
       renderNsRulesPanel();
       renderSidebar();
-      if (cy) cy.style(buildCyStyle());
+      if (cy) cy.style(buildCyStyleCached());
       document.querySelectorAll('.legend-item[data-type]').forEach(item => {
         item.classList.toggle('hidden', STATE.hiddenTypes.has(item.dataset.type));
       });
