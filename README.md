@@ -12,8 +12,32 @@ ros2_analyze/
 │   ├── index.html      # SPA-интерфейс
 │   ├── app.js          # Вся логика графа (клиентский JS)
 │   └── style.css       # Стили + поддержка тёмной/светлой темы
-├── requirements.txt    # Пустой — коллектор не требует зависимостей
+├── requirements.txt   / # Пустой — коллектор не требует зависимостей
 └── ros2_env_example.json
+```
+
+---
+
+## Получение коллектора
+
+Скачайте только `collector/collect.py` — без клонирования всего репозитория:
+
+```bash
+# GitHub
+wget https://raw.githubusercontent.com/bar2104y/ros2_web_graph/main/collector/collect.py
+
+# GitFlic (зеркало)
+wget https://gitflic.ru/project/ybarichev/ros2_web_graph/blob/raw?file=collector%2Fcollect.py -O collect.py
+```
+
+Или склонируйте репозиторий целиком:
+
+```bash
+# GitHub
+git clone https://github.com/bar2104y/ros2_web_graph.git
+
+# GitFlic (зеркало)
+git clone https://gitflic.ru/project/ybarichev/ros2_web_graph.git
 ```
 
 ---

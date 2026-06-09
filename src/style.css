@@ -601,6 +601,27 @@ body {
   flex: 1;
   background: var(--bg);
   transition: opacity 0.18s ease;
+  position: relative;
+}
+
+#graph-refresh-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--fg);
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s;
+}
+
+#graph-refresh-btn:hover {
+  opacity: 1;
 }
 
 /* -------------------------------------------------------------------------
@@ -750,6 +771,14 @@ body {
 #entity-list li.entity-hidden .entity-name {
   opacity: 0.4;
   text-decoration: line-through;
+}
+
+#entity-list li.sidebar-truncated {
+  padding: 6px 10px;
+  font-size: 11px;
+  opacity: 0.55;
+  font-style: italic;
+  pointer-events: none;
 }
 
 /* -------------------------------------------------------------------------
