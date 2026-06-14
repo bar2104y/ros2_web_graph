@@ -26,6 +26,9 @@ ros2_analyze/
 # GitHub
 wget https://raw.githubusercontent.com/bar2104y/ros2_web_graph/main/collector/collect.py
 
+# Gitlab
+wget https://gitlab.com/bar2104/ros2_web_graph/-/raw/main/collector/collect.py
+
 # GitFlic (зеркало)
 wget https://gitflic.ru/project/ybarichev/ros2_web_graph/blob/raw?file=collector%2Fcollect.py -O collect.py
 ```
@@ -42,7 +45,7 @@ git clone https://gitflic.ru/project/ybarichev/ros2_web_graph.git
 
 ---
 
-## Шаг 1: Сбор данных
+### Шаг 1: Сбор данных
 
 Запустить на машине с активным ROS2-окружением:
 
@@ -67,7 +70,7 @@ python collector/collect.py -o ros2_env.json --name "robot-arm v2" --verbose
 
 ---
 
-## Шаг 2: Перенос файла (если нужно)
+### Шаг 2: Перенос файла (если нужно)
 
 ```bash
 scp robot@<ip>:/path/to/ros2_env.json .
@@ -75,7 +78,7 @@ scp robot@<ip>:/path/to/ros2_env.json .
 
 ---
 
-## Шаг 3: Открыть веб-интерфейс
+### Шаг 3: Открыть веб-интерфейс
 
 Никакой установки не нужно — просто откройте `src/index.html` в браузере:
 
@@ -86,7 +89,9 @@ scp robot@<ip>:/path/to/ros2_env.json .
 Затем нажмите кнопку **Open** в шапке и выберите файл `ros2_env.json`.  
 Или перетащите файл прямо на страницу.
 
-> Интерфейс работает полностью на стороне клиента. Сервер не нужен.
+> Если вам нужно только посомтреть без сборки, страницы опубликованы в интернете:
+> - https://bar2104y.github.io/ros2_web_graph/
+> - https://ros2-web-graph-4e634a.gitlab.io/
 
 ---
 

@@ -25,6 +25,8 @@ const STATE = {
   colorMode: 'type',         // 'type' | 'namespace'
   nsRules: [],               // [{ pattern: string, color: string }]
   nodeAnalyzeMode: false,    // collapse topics/services/actions into node-to-node edges
+  navHistory: [],            // navigation history [{type, name}]
+  navPos: -1,                // current position in navHistory
 };
 
 // ---------------------------------------------------------------------------
@@ -315,7 +317,7 @@ function initCytoscape() {
     wheelSensitivity: 0.3,
   });
 
-  cy.on('tap', 'node', function (evt) {
+  cy.on('dbltap', 'node', function (evt) {
     const id = evt.target.id();
     if (id === '__truncated__') return;
     const entry = STATE.index[id];
@@ -953,7 +955,7 @@ function renderGraph(type, name, depth) {
 // Entity selection
 // ---------------------------------------------------------------------------
 
-function selectEntity(type, name, scrollSidebar = true) {
+function selectEntity(type, name, scrollSidebar = true, _skipHistory = false) {
   // Update tab if needed
   const tabName = type + 's';
   if (STATE.activeTab !== tabName) {
@@ -966,6 +968,15 @@ function selectEntity(type, name, scrollSidebar = true) {
   }
 
   STATE.selected = { type, name };
+
+  if (!_skipHistory) {
+    // Truncate forward history when navigating to a new entity
+    STATE.navHistory = STATE.navHistory.slice(0, STATE.navPos + 1);
+    STATE.navHistory.push({ type, name });
+    STATE.navPos = STATE.navHistory.length - 1;
+  }
+  updateNavButtons();
+
   renderSidebar();
   renderDetails(type, name);
   renderGraph(type, name, STATE.depth);
@@ -974,6 +985,27 @@ function selectEntity(type, name, scrollSidebar = true) {
     const active = document.querySelector('#entity-list li.active');
     if (active) active.scrollIntoView({ block: 'nearest' });
   }
+}
+
+function updateNavButtons() {
+  const backBtn = document.getElementById('graph-back-btn');
+  const fwdBtn  = document.getElementById('graph-fwd-btn');
+  if (backBtn) backBtn.disabled = STATE.navPos <= 0;
+  if (fwdBtn)  fwdBtn.disabled  = STATE.navPos >= STATE.navHistory.length - 1;
+}
+
+function goBack() {
+  if (STATE.navPos <= 0) return;
+  STATE.navPos--;
+  const { type, name } = STATE.navHistory[STATE.navPos];
+  selectEntity(type, name, true, true);
+}
+
+function goForward() {
+  if (STATE.navPos >= STATE.navHistory.length - 1) return;
+  STATE.navPos++;
+  const { type, name } = STATE.navHistory[STATE.navPos];
+  selectEntity(type, name, true, true);
 }
 
 // ---------------------------------------------------------------------------
@@ -1035,6 +1067,25 @@ function wireEvents() {
   document.getElementById('graph-refresh-btn').addEventListener('click', () => {
     if (STATE.selected) renderGraph(STATE.selected.type, STATE.selected.name, STATE.depth);
   });
+
+  // Focus active element button
+  document.getElementById('graph-focus-btn').addEventListener('click', () => {
+    if (!STATE.selected || !cy) return;
+    const node = cy.getElementById(STATE.selected.name);
+    if (node.length) cy.animate({ fit: { eles: node, padding: 100 }, duration: 300 });
+  });
+
+  // Back / Forward navigation
+  document.getElementById('graph-back-btn').addEventListener('click', goBack);
+  document.getElementById('graph-fwd-btn').addEventListener('click', goForward);
+
+  // Keyboard shortcuts: Alt+Left / Alt+Right
+  document.addEventListener('keydown', e => {
+    if (e.altKey && e.key === 'ArrowLeft')  goBack();
+    if (e.altKey && e.key === 'ArrowRight') goForward();
+  });
+
+  updateNavButtons();
 
   // Node Analyze toggle
   document.getElementById('node-analyze-toggle').addEventListener('click', () => {
