@@ -604,11 +604,22 @@ body {
   position: relative;
 }
 
-#graph-refresh-btn {
+#graph-overlay-btns {
   position: absolute;
   top: 8px;
   right: 8px;
   z-index: 10;
+  display: flex;
+  gap: 4px;
+  opacity: 0.75;
+  transition: opacity 0.15s;
+}
+
+#graph-overlay-btns:hover {
+  opacity: 1;
+}
+
+#graph-overlay-btns button {
   padding: 5px 10px;
   font-size: 12px;
   border-radius: 5px;
@@ -616,12 +627,11 @@ body {
   background: var(--bg2);
   color: var(--fg);
   cursor: pointer;
-  opacity: 0.75;
-  transition: opacity 0.15s;
 }
 
-#graph-refresh-btn:hover {
-  opacity: 1;
+#graph-overlay-btns button:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* -------------------------------------------------------------------------

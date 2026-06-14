@@ -93,7 +93,12 @@
 
     <!-- Cytoscape canvas -->
     <div id="cy">
-      <button id="graph-refresh-btn" title="Re-run layout to fill gaps after visibility changes">↺ Refresh layout</button>
+      <div id="graph-overlay-btns">
+        <button id="graph-back-btn" title="Go back (Alt+←)" disabled>← Back</button>
+        <button id="graph-fwd-btn"  title="Go forward (Alt+→)" disabled>Forward →</button>
+        <button id="graph-refresh-btn" title="Re-run layout to fill gaps after visibility changes">↺ Refresh layout</button>
+        <button id="graph-focus-btn" title="Center view on the selected element">⊙ Center</button>
+      </div>
     </div>
 
     <!-- Right-click context menu -->
