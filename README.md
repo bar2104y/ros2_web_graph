@@ -92,6 +92,12 @@ scp robot@<ip>:/path/to/ros2_env.json .
 > Если вам нужно только посомтреть без сборки, страницы опубликованы в интернете:
 > - https://bar2104y.github.io/ros2_web_graph/
 > - https://ros2-web-graph-4e634a.gitlab.io/
+>
+> Подробная инструкция по использованию со скриншотами:
+> - https://bar2104y.github.io/ros2_web_graph/docs/
+> - https://ros2-web-graph-4e634a.gitlab.io/docs/
+>
+> (генерируется автоматически из [docs/usage.md](docs/usage.md) при каждой сборке CI)
 
 ---
 

@@ -1,8 +1,13 @@
 pages:
   stage: deploy
+  image: mcr.microsoft.com/playwright/python:v1.48.0-noble
   script:
+    - pip install -r scripts/requirements-docs.txt
+    - python scripts/generate_screenshots.py
+    - python scripts/build_docs.py
     - mkdir -p public
     - cp -r src/* public/
+    - cp -r docs/site public/docs
   artifacts:
     paths:
       - public

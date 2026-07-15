@@ -14,8 +14,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy src/ to gh-pages
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install docs tooling
+        run: |
+          pip install -r scripts/requirements-docs.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Generate screenshots and build docs
+        run: |
+          python scripts/generate_screenshots.py
+          python scripts/build_docs.py
+
+      - name: Assemble Pages site
+        run: |
+          mkdir -p public
+          cp -r src/* public/
+          cp -r docs/site public/docs
+
+      - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./src
+          publish_dir: ./public
