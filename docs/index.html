@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROS2 Analyzer — инструкция по использованию</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 900px;
+         margin: 2rem auto; padding: 0 1.5rem; line-height: 1.55; color: #1c1c1c; }
+  img { max-width: 100%; border: 1px solid #ddd; border-radius: 6px; }
+  pre { background: #f5f5f5; padding: 0.75rem 1rem; overflow-x: auto; border-radius: 6px; }
+  code { background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  h1, h2 { border-bottom: 1px solid #eee; padding-bottom: 0.3rem; }
+  table { border-collapse: collapse; }
+  th, td { border: 1px solid #ddd; padding: 0.4rem 0.7rem; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #1e1e1e; color: #ddd; }
+    pre, code { background: #2a2a2a; color: #eee; }
+    img { border-color: #444; }
+    th, td { border-color: #444; }
+  }
+</style>
+</head>
+<body>
+<h1>Инструкция по использованию ROS2 Analyzer</h1>
+<p>Пошаговое руководство по сбору данных о ROS2-окружении и работе с веб-интерфейсом.
+Все скриншоты сделаны на примере файла <code>ros2_env_example.json</code> из корня репозитория.</p>
+<h2>1. Открытие файла</h2>
+<p>Откройте <code>src/index.html</code> в браузере. Пока данные не загружены, на экране —
+диалог выбора файла: нажмите <strong>Choose file…</strong> или перетащите <code>.json</code>-снапшот
+прямо на страницу.</p>
+<p><img alt="Экран открытия файла" src="screenshots/01-open-file.png" /></p>
+<h2>2. Список сущностей</h2>
+<p>После загрузки в левой панели появляется список нод — вкладками переключаетесь
+между <strong>Nodes / Topics / Services / Actions</strong>, сверху есть поиск по имени.</p>
+<p><img alt="Список сущностей в сайдбаре" src="screenshots/02-entity-list.png" /></p>
+<h2>3. Детали и граф связей</h2>
+<p>Клик по любой сущности в списке открывает панель деталей (тип, QoS, связи) и
+строит граф связей на основе BFS-обхода от выбранной сущности.</p>
+<p><img alt="Панель деталей и граф" src="screenshots/03-details-and-graph.png" /></p>
+<h2>4. Глубина графа</h2>
+<p>Слайдер <strong>Graph depth</strong> (1–6) управляет тем, сколько «хопов» связей
+показывать: depth=1 — только прямые связи, depth=2 и больше — связи связей.</p>
+<p><img alt="Граф с увеличенной глубиной" src="screenshots/04-graph-depth.png" /></p>
+<h2>5. Цветовой режим по namespace</h2>
+<p>Кнопка <strong>NS Colors</strong> переключает раскраску узлов графа: по типу сущности или
+по настраиваемым правилам — подстрокам namespace (правила добавляются в
+панели, которая появляется под графом).</p>
+<p><img alt="Раскраска по namespace" src="screenshots/05-ns-colors.png" /></p>
+<h2>6. Тёмная тема</h2>
+<p>Кнопка ☾/☀ в шапке сайдбара переключает светлую/тёмную тему интерфейса.</p>
+<p><img alt="Тёмная тема" src="screenshots/06-dark-theme.png" /></p>
+<h2>Дополнительно</h2>
+<ul>
+<li><strong>Правая кнопка мыши</strong> на узле графа — скрыть/показать сущность или перейти
+  к ней в сайдбаре.</li>
+<li><strong>Show all / Hide all</strong> — быстро показать или скрыть все сущности текущей
+  вкладки в графе.</li>
+<li><strong>Export / Import</strong> в шапке — сохранить или восстановить настройки
+  видимости и правил раскраски как JSON-файл.</li>
+<li>Формат входного JSON-файла и опции коллектора описаны в
+  <a href="../README.md">README.md</a>.</li>
+</ul>
+</body>
+</html>
